@@ -23,8 +23,11 @@ Where `steve-iphone` is name of peer (choose any yours, but limit to alphanumeri
 You'll see textual confiuration for peer device and if you have installed `qrencode` you'll see config as QR code ready to use for mobile apps.
 
 Bring vpn up: `wgctl up wg0`
+
 Check status: `wg`
+
 Stop vpn: `wgctl down wg0`
+
 More options: `wgctl help`
 
 ### Make it permanent
@@ -62,11 +65,11 @@ To delete vpn interface stop it with `ifdown wg0` then do `rm /etc/wireguard/<if
 
 Script holds all keys/configs in `/etc/wireguard` folder:
 
-`*.key` private keys for local interfaces.
+`*.key` private keys for local vpn interfaces.
 
-`*.iface` local interface configuration.
+`*.iface` local vpn interface configuration.
 
-`*.peer` keys and config files for vpn clients.
+`*.peer` private keys and config files for vpn clients/peers.
 
 ### Compatibility
 
