@@ -1,6 +1,6 @@
 # WGCTL
 
-Simple (70+ lines) bash script for basic WireGuard interfaces/peers management.
+Simple (70+ lines) bash script for basic WireGuard interfaces/peers management via generated config files. Script allows: setting up vpn interfaces from stored interfaces (keys, addresses, port) and peers (keys, address, dns, port, allowed ips, keepalive). Supports viewing qr encoded configs for mobile peers.
 
 Install script:
 ```
@@ -20,7 +20,7 @@ Where `wg0` is name of vpn network interface in system, `10.0.0.1/24` vpn interf
 
 Where `steve-iphone` is name of peer (choose any yours, but limit to alphanumeric), `10.0.0.2/32` peer's address and `wg0` is vpn interface to connect on.
 
-You'll see textual confiuration for peer device and if you have installed `qrencode` you'll see config as QR code ready to scan from mobile apps.
+You'll see textual confiuration for peer device and if you have installed `qrencode` tool you'll see config as ready to scan QR code.
 
 Bring vpn up: `wgctl up wg0`
 
@@ -70,6 +70,10 @@ Script holds all keys/configs in `/etc/wireguard` folder:
 `*.iface` local vpn interface configuration.
 
 `*.peer` private keys and config files for vpn clients/peers.
+
+### Limitations
+
+No pre-shared keys (psk) support yet. Pre-shared keys is additional traffic defense against breaking on quantum computers in some near future through extra encryption with psk.
 
 ### Compatibility
 
