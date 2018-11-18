@@ -20,7 +20,7 @@ Where `wg0` is name of vpn network interface in system, `10.0.0.1/24` vpn interf
 
 Where `steve-iphone` is name of peer (choose any yours, but limit to alphanumeric), `10.0.0.2/32` peer's address and `wg0` is vpn interface to connect on.
 
-You'll see textual confiuration for peer device and if you have installed `qrencode` you'll see config as QR code ready to use for mobile apps.
+You'll see textual confiuration for peer device and if you have installed `qrencode` you'll see config as QR code ready to scan from mobile apps.
 
 Bring vpn up: `wgctl up wg0`
 
