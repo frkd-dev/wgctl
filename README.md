@@ -1,6 +1,6 @@
 # WGCTL
 
-Simple (70+ lines) bash script for basic WireGuard interfaces/peers management via generated config files. Script allows: setting up vpn interfaces from stored interfaces (keys, addresses, port) and peers (keys, address, dns, port, allowed ips, keepalive). Supports viewing qr encoded configs for mobile peers.
+Simple (70+ lines) bash script for basic WireGuard interfaces/peers management via generated config files: setting up vpn interfaces from stored interfaces (keys, addresses, port) and peers (keys, address, dns, port, allowed ips, keepalive). Supports viewing qr encoded configs for mobile peers.
 
 Install script:
 ```
