@@ -19,7 +19,7 @@ up() { # brings iface up and configures related stuff
 	cfg="listen-port $port private-key $cfgdir/$iface.key"
 	for i in $cfgdir/*.$iface.peer ; do
 		read key ips _ _ _ < $i
-		cfg="$cfg peer $(echo $key | wg pubkey) allowed-ips $ips"
+		cfg="$cfg peer $(echo $key | wg pubkey) allowed-ips $ips preshared-key ${i%peer}psk"
 	done
 	ip link add $iface type wireguard
 	wg set $iface $cfg
@@ -32,7 +32,7 @@ up() { # brings iface up and configures related stuff
 down() { # brings iface down
 	iface=${1?"IFACE is missing"}
 	read addr port < $cfgdir/$iface.iface
-	net=$(_netmask $addr)
+	net=$(_ip2mask $addr)
 	iptables -t nat -D POSTROUTING -s $net -o $(ip r l 0/0 | awk '{print $5}') -j MASQUERADE
 	ip link set dev $iface down
 	ip link del $iface
@@ -52,7 +52,7 @@ showpeer() { #shows config and qr code for peer
 	read _ srvport < $cfgdir/$iface.iface
 	srvip="$(ip r g 1.1.1.1 | awk '/1.1.1.1/ {print $7}'):$srvport"
 	srvpubkey=$(echo $srvkey | wg pubkey)
-	cfg="[Interface]\nAddress=$addr\n$([ _$port != _0 ] && echo "ListenPort=$port")PrivateKey=$key\nDNS=$dns\n\n[Peer]\nPublicKey=$srvpubkey\nAllowedIPs=$allowed\nEndpoint=$srvip\nPersistentKeepalive=$ka"
+	cfg="[Interface]\nAddress=$addr\n$([ _$port != _0 ] && echo "ListenPort=$port")PrivateKey=$key\nDNS=$dns\n\n[Peer]\nPublicKey=$srvpubkey\nAllowedIPs=$allowed\nEndpoint=$srvip\nPersistentKeepalive=$ka\nPresharedKey=$(cat $cfgdir/$name.$iface.psk)"
 	printf "\n\n$cfg\n\n"
 	[ ! -z "$(which qrencode)" ] && { printf "$cfg" | qrencode -t ansiutf8; }
 }
@@ -61,6 +61,7 @@ addpeer() { # creates a record for new peer
 	name=${1?"NAME is missing"}; iface=${2?"IFACE is missing"}; addr=${3?"ADDR is missing"}
 	shift 3; opts=(port dns allow ka) _readopts $*
 	echo "$(wg genkey) $addr ${port-0} ${dns-8.8.8.8,8.8.4.4} ${allow-0.0.0.0/0} ${ka-25}" > $cfgdir/$name.$iface.peer
+	wg genkey > $cfgdir/$name.$iface.psk
 	showpeer $name $iface
 }
 
