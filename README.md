@@ -73,11 +73,18 @@ Script holds all keys/configs in `/etc/wireguard` folder:
 
 ### Limitations
 
-No pre-shared keys (psk) support yet. Pre-shared keys is additional traffic defense against breaking on quantum computers in some near future through extra encryption with psk.
+No pre-shared keys (psk) support yet. They are additional traffic defense against breaking on quantum computers in some near future through extra encryption with psk.
 
 ### Compatibility
 
 Tested on: Debian 9.
+
+### TODO
+
+ * Updating peers as `wgctl updpeer` without restarting interfaces.
+ * Deleting peers as `wgctl rmpeer` without restarting interfaces.
+ * Deleting interfaces as `wgctl rmlink`.
+ * Add pre-shared key support.
 
 ### License
 
