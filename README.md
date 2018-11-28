@@ -1,6 +1,6 @@
 # WGCTL
 
-Simple (under 100 lines) bash script for basic WireGuard interfaces/peers management using generated config files with support of nearly all configuration options: keys, addresses, ports, dns, allowed ips, keepalive, preshared-keys and QR encoded configs for mobile peers.
+Simple (under 100 lines) bash script for basic WireGuard interfaces/peers management using generated config files with nearly all configuration options support: keys, addresses, ports, dns, allowed ips, keepalive, preshared-keys and QR encoded configs for mobile peers.
 
 Install script:
 ```
