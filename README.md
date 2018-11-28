@@ -4,7 +4,7 @@ Simple (under 100 lines) bash script for basic WireGuard interfaces/peers manage
 
 Install script:
 ```
-wget https://raw.githubusercontent.com/stunpix/wgctl/master/wgctl > wgctl
+wget https://raw.githubusercontent.com/stunpix/wgctl/master/wgctl
 chmod 755 wgctl && chown root:root wgctl && mv wgctl /usr/bin/
 ```
 
