@@ -1,25 +1,30 @@
 #!/bin/bash
-umask 077 ; cfgdir=/etc/wireguard ; mkdir -p $cfgdir
+umask 077 ; cfgdir=/etc/wireguard/wgctl ; mkdir -p $cfgdir
 
 _ip2mask() { # convert ip/cidr to netmask: 192.168.1.1/16 -> 192.168.0.0/16
 	echo $1 | awk -F'[./]' 'function b(n,at){return int(n/2^at)-int(n/2^(at+8))*256} {n=$1*(2^24)+$2*(2^16)+$3*(2^8)+$4; msk=2^(32-$5); n=int(n/msk)*msk; printf "%u.%u.%u.%u/%s", b(n,24), b(n,16), b(n,8), b(n,0), $5;}'
 }
 
-_readopts() { # read options opt=var so they accessible as $opt
+_readopts() { # parse cmd line options like a=b and make them accessible from script
 	while [ ! -z "$1" ] ; do # some kind of magic
-		[[ $opts =~ (^| )${1%=*}($| ) ]] && eval ${1%=*}=${1#*=} || { echo "Unknown option $1"; exit 1; }
+		[[ $opts =~ (\(| )${1%=*}( |\)) ]] && eval ${1%=*}=${1#*=} || { echo "Unknown option $1"; exit 1; }
 		shift
 	done
 }
 
+_islinkup() { # checks whether link is up or not
+	[ _$1 == _$(wg show interfaces | grep $1) ]
+}
+
 up() { # brings iface up and configures related stuff
 	iface=${1?"IFACE is missing"}
+	[ -f $cfgdir/$iface.iface ] || { echo "No such interface '$iface'!"; exit 1; }
 	read addr port < $cfgdir/$iface.iface
 	net=$(_ip2mask $addr)
 	cfg="listen-port $port private-key $cfgdir/$iface.key"
-	for i in $cfgdir/*.$iface.peer ; do
-		read key ips _ _ _ < $i
-		cfg="$cfg peer $(echo $key | wg pubkey) allowed-ips $ips preshared-key ${i%peer}psk"
+	for i in $cfgdir/*.peer ; do
+		read key peeriface peeraddr _ _ _ < $i
+		[ _$iface == _$peeriface ] && cfg="$cfg peer $(echo $key | wg pubkey) allowed-ips $peeraddr preshared-key ${i%peer}psk"
 	done
 	ip link add $iface type wireguard
 	wg set $iface $cfg
@@ -27,50 +32,66 @@ up() { # brings iface up and configures related stuff
 	ip addr add $addr dev $iface
 	sysctl -q net.ipv4.ip_forward=1
 	iptables -t nat -A POSTROUTING -s $net -o $(ip r l 0/0 | awk '{print $5}') -j MASQUERADE
+	echo "Wireguard link '$iface' is running..."
 }
 
 down() { # brings iface down
 	iface=${1?"IFACE is missing"}
+	[ -f $cfgdir/$iface.iface ] || { echo "No such interface '$iface'!"; exit 1; }
 	read addr port < $cfgdir/$iface.iface
 	net=$(_ip2mask $addr)
 	iptables -t nat -D POSTROUTING -s $net -o $(ip r l 0/0 | awk '{print $5}') -j MASQUERADE
 	ip link set dev $iface down
 	ip link del $iface
+	echo "Wireguard link '$iface' is stopped..."
 }
 
 addlink() { # creates new vpn records
 	iface=${1?"IFACE is missing"}; addr=${2?"ADDR is missing"}
-	wg genkey > $cfgdir/$iface.key
+	wg genkey > $cfgdir/$iface.key && echo "Key created..."
 	shift 2; opts=(port) _readopts $*
-	echo "$addr ${port-51820}" > $cfgdir/$iface.iface
+	echo "$addr ${port-51820}" > $cfgdir/$iface.iface && echo "Config created..."
 }
 
 showpeer() { #shows config and qr code for peer
-	name=${1?"NAME is missing"}; iface=${2?"IFACE is missing"}
-	read key addr port dns allowed ka < $cfgdir/$name.$iface.peer
+	name=${1?"NAME is missing"};
+	read key iface addr port dns allowed ka < $cfgdir/$name.peer
 	read srvkey < $cfgdir/$iface.key
 	read _ srvport < $cfgdir/$iface.iface
 	srvip="$(ip r g 1.1.1.1 | awk '/1.1.1.1/ {print $7}'):$srvport"
 	srvpubkey=$(echo $srvkey | wg pubkey)
-	cfg="[Interface]\nAddress=$addr\n$([ _$port != _0 ] && echo "ListenPort=$port")PrivateKey=$key\nDNS=$dns\n\n[Peer]\nPublicKey=$srvpubkey\nAllowedIPs=$allowed\nEndpoint=$srvip\nPersistentKeepalive=$ka\nPresharedKey=$(cat $cfgdir/$name.$iface.psk)"
+	cfg="[Interface]\nAddress=$addr\n$([ _$port != _0 ] && echo "ListenPort=$port")PrivateKey=$key\nDNS=$dns\n\n[Peer]\nPublicKey=$srvpubkey\nAllowedIPs=$allowed\nEndpoint=$srvip\nPersistentKeepalive=$ka\nPresharedKey=$(cat $cfgdir/$name.psk)"
 	printf "\n\n$cfg\n\n"
 	[ ! -z "$(which qrencode)" ] && { printf "$cfg" | qrencode -t ansiutf8; }
 }
 
 addpeer() { # creates a record for new peer
-	name=${1?"NAME is missing"}; iface=${2?"IFACE is missing"}; addr=${3?"ADDR is missing"}
+	name=${1?"NAME is missing"}; addr=${2?"ADDR is missing"}; iface=${3?"IFACE is missing"}
 	shift 3; opts=(port dns allow ka) _readopts $*
-	echo "$(wg genkey) $addr ${port-0} ${dns-8.8.8.8,8.8.4.4} ${allow-0.0.0.0/0} ${ka-25}" > $cfgdir/$name.$iface.peer
-	wg genkey > $cfgdir/$name.$iface.psk
-	showpeer $name $iface
+	key=$(wg genkey)
+	echo "$key $iface $addr ${port=0} ${dns=8.8.8.8,8.8.4.4} ${allow=0.0.0.0/0} ${ka=25}" > $cfgdir/$name.peer && echo "Config created..."
+	wg genkey > $cfgdir/$name.psk
+	_islinkup $iface && wg set $iface peer $(echo $key | wg pubkey) allowed-ips $addr preshared-key $cfgdir/$name.psk && echo "Added to active link..."
+	echo "Done..."
+}
+
+delpeer() { #delete peer by name
+	name=${1?"NAME is required"}
+	[ -f $cfgdir/$name.peer ] || { echo "No such peer in configs."; exit 1; }
+	read -p "Sure? [y/N] " -n 1 -r _yn; echo ; [[ ! $_yn =~ ^[Yy]$ ]] && echo "Cancelled..." && exit 0
+	read key iface _ _ _ _ < $cfgdir/$name.peer
+	rm -f $cfgdir/$name.{peer,psk} && echo "Config files removed..."
+	_islinkup $iface && wg set $iface peer $(echo $key | wg pubkey) remove && echo "Removed from active link..."
+	echo "Done..."
 }
 
 help() { cat <<EOF
 USAGE
 wgctl <up|down> <IFACE>
-	| addlink <NAME> <ADDR> [port=<PORT>]
-	| addpeer <NAME> <IFACE> <ADDR> [port=<PORT>] [dns=<DNS1,DNS2,...>] [allow=<IP1,IP2,...>] [ka=<KEEPALIVE>]
-	| showpeer <NAME> <IFACE>"
+	| addlink <IFACE> <ADDR> [port=<PORT>]
+	| addpeer <NAME> <ADDR> <IFACE> [port=<PORT>] [dns=<DNS1,DNS2,...>] [allow=<IP1,IP2,...>] [ka=<KEEPALIVE>]
+	| delpeer <NAME>
+	| showpeer <NAME>
 	| help
 EOF
 }
