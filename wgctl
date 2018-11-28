@@ -75,7 +75,7 @@ addpeer() { # creates a record for new peer
 	echo "Done..."
 }
 
-delpeer() { #delete peer by name
+rmpeer() { # remove peer by name
 	name=${1?"NAME is required"}
 	[ -f $cfgdir/$name.peer ] || { echo "No such peer in configs."; exit 1; }
 	read -p "Sure? [y/N] " -n 1 -r _yn; echo ; [[ ! $_yn =~ ^[Yy]$ ]] && echo "Cancelled..." && exit 0
@@ -90,7 +90,7 @@ USAGE
 wgctl <up|down> <IFACE>
 	| addlink <IFACE> <ADDR> [port=<PORT>]
 	| addpeer <NAME> <ADDR> <IFACE> [port=<PORT>] [dns=<DNS1,DNS2,...>] [allow=<IP1,IP2,...>] [ka=<KEEPALIVE>]
-	| delpeer <NAME>
+	| rmpeer <NAME>
 	| showpeer <NAME>
 	| help
 EOF
