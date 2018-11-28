@@ -1,36 +1,34 @@
 # WGCTL
 
-Simple (70+ lines) bash script for basic WireGuard interfaces/peers management via generated config files: setting up vpn interfaces from stored configs (keys, addresses, port) and peers (keys, addresses, dns, port, allowed ips, keepalive). Supports viewing qr encoded configs for mobile peers.
+Simple (under 100 lines) bash script for basic WireGuard interfaces/peers management via generated config files: setting up vpn interfaces from stored configs (keys, addresses, port) and peers (keys, addresses, dns, port, allowed ips, keepalive). Supports viewing qr encoded configs for mobile peers.
 
 Install script:
 ```
 wget https://raw.githubusercontent.com/stunpix/wgctl/master/wgctl > wgctl
-chmod 755 wgctl && chown root:root wgctl && mv wgctl /usr/sbin/
+chmod 755 wgctl && chown root:root wgctl && mv wgctl /usr/bin/
 ```
 
 **Note**: All actions require `root` priveleges.
 
-Create vpn server interface configuration:
+Steps to bring vpn up. 
 
-`wgctl addlink wg0 10.0.0.1/24`
+1. Create vpn interface configuration: `wgctl addlink wg0 10.0.0.1/24`. Where `wg0` is vpn interface name in your system and `10.0.0.1/24` — interface IP/netmask.
 
-Where `wg0` is name of vpn network interface in system, `10.0.0.1/24` vpn interface IP/netmask. Now add client/peer configuration:
+2. Add client/peer configuration: `wgctl addpeer steve-iphone 10.0.0.2/32 wg0`. Where `steve-iphone` is name of peer (choose yours), `10.0.0.2/32` peer's address and `wg0` is vpn interface to which it belongs.
 
-`wgctl addpeer steve-iphone wg0 10.0.0.2/32`
+3. Bring vpn up: `wgctl up wg0`
 
-Where `steve-iphone` is name of peer (choose any yours, but limit to alphanumeric), `10.0.0.2/32` peer's address and `wg0` is vpn interface to connect on.
+4. Check status: `wg`
 
-You'll see textual confiuration for peer device and if you have installed `qrencode` tool you'll see config as ready to scan QR code.
-
-Bring vpn up: `wgctl up wg0`
-
-Check status: `wg`
+5. Get peer's configuration: `wgctl showpeer steve-iphone`. QR available only when you have installed `qrencode` tool.
 
 Stop vpn: `wgctl down wg0`
 
+Delete peer: `wgctl rmpeer steve-iphone`. This deletes peer from any active connection without stopping it and deletes peer's configuration files.
+
 More options: `wgctl help`
 
-### Make it permanent
+### Make VPN permanent
 
 Good practice is to manage your network interfaces with `ifupdown` toolset, especially when you need bring them up once system is (re)started. To do this create file `/etc/network/interfaces.d/wireguard` with following content:
 
@@ -43,43 +41,34 @@ iface wg0 inet manual
 
 **Note**: make sure that `/etc/network/interfaces` has `source-directory /etc/network/interfaces.d` or similar line otherwise `ifupdown` will not see your interface. Some distors and VPS providers are wiping this line by overwriting `interfaces` file with they own version.
 
+**Important**: this is not suitable for busybox environments, for busybox use `/etc/network/interfaces` file to store vpn interface configuration.
+
 ### Updating configs
 
-To update interface or user configurations just run `wgctl addlink|addpeer` with same `NAME`/`IFACE` options. Old key/config files will be overwritten. Once you've done, reload vpn interface `ifdown wg0 && ifup wg0`.
+Before updating existing configs — stop vpn interface like `ifdown wg0`. To update interface/user configurations run `wgctl addlink|addpeer` with same `NAME`/`IFACE` options as before. Old keys/config files will be overwritten. Once you've done, bring vpn interface up with `ifup wg0`.
 
-**Note**: WireGuard doesn't have functionality to push new configs to your peer devices once configurations are updated, so you need to reconfigure them again. Run `wgctl showpeer <NAME> <IFACE>` to get fresh configs.
-
-### Deleting peer configs
-
-To delete all peer configs run `rm /etc/wireguard/<peer-name>.*`.
-
-To delete peer for particular vpn interface run `rm /etc/wireguard/<peer-name>.<iface>.*`.
-
-Once you've done – reload interface `ifdown wg0 && ifup wg0`.
+**Note**: WireGuard doesn't have functionality to push updated configs to peer devices, so you need update them manually. Run `wgctl showpeer <NAME>` to get updated configs.
 
 ### Deleting vpn interface
 
-To delete vpn interface stop it with `ifdown wg0` then do `rm /etc/wireguard/<iface>.*`. Update `/etc/network/interfaces.d/wireguard` accordingly.
+To delete vpn interface stop it with `ifdown wg0` then do `rm /etc/wireguard/wgctl/<iface>.*`. Update `/etc/network/interfaces.d/wireguard` accordingly.
 
 ### Configuration files
 
-Script holds all keys/configs in `/etc/wireguard` folder:
+Script holds all keys/configs in `/etc/wireguard/wgctl` folder:
 
 `*.key` private keys for local vpn interfaces.
 
 `*.iface` local vpn interface configuration.
 
-`*.peer` private keys and config files for vpn clients/peers.
+`*.peer` client/peer configuration with private keys.
 
-### Compatibility
-
-Tested on: Debian 9.
+`*.psk` peer's preshared key.
 
 ### TODO
 
- * Updating peers as `wgctl updpeer` without restarting interfaces.
- * Deleting peers as `wgctl rmpeer` without restarting interfaces.
- * Deleting interfaces as `wgctl rmlink`.
+ * Updating peers with `wgctl updpeer` without restarting interfaces.
+ * Deleting interfaces with `wgctl rmlink`.
 
 ### License
 
