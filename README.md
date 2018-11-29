@@ -1,26 +1,34 @@
 # WGCTL
 
-Simple (under 100 lines) bash script for basic WireGuard interfaces/peers management using generated config files with nearly all configuration options support: keys, addresses, ports, dns, allowed ips, keepalive, preshared-keys and QR encoded configs for mobile peers.
+Simple (~100 lines) bash script for basic WireGuard interfaces/peers management using generated config files with nearly all configuration options support: keys, addresses, ports, dns, allowed ips, keepalive, preshared-keys and QR encoded configs for mobile peers.
 
-Install script:
+### Install
+
+Prerequirements:
+
+1. Linux.
+2. All actions are running with `root` priveleges.
+2. You have [installed][1] wireguard tools and kernel modules.
+
+[1]: https://www.wireguard.com/install/
+
+Steps to bring vpn up. 
+
+1. Get the script:
 ```
 wget https://raw.githubusercontent.com/stunpix/wgctl/master/wgctl
 chmod 755 wgctl && chown root:root wgctl && mv wgctl /usr/bin/
 ```
 
-**Note**: All actions require `root` priveleges.
+2. Create vpn interface configuration: `wgctl addlink wg0 10.0.0.1/24`. Where `wg0` is vpn interface name in your system and `10.0.0.1/24` is vpn interface IP/netmask. You could choose any vpn interface name as: vpn0, mynet1, wgrd0, etc. We'll use `wg0`.
 
-Steps to bring vpn up. 
+3. Add client/peer configuration: `wgctl addpeer steve-iphone 10.0.0.2/32 wg0`. Where `steve-iphone` is name of peer (choose yours), `10.0.0.2/32` peer's address and `wg0` is vpn interface to which it belongs.
 
-1. Create vpn interface configuration: `wgctl addlink wg0 10.0.0.1/24`. Where `wg0` is vpn interface name in your system and `10.0.0.1/24` — interface IP/netmask.
+4. Bring vpn up: `wgctl up wg0`
 
-2. Add client/peer configuration: `wgctl addpeer steve-iphone 10.0.0.2/32 wg0`. Where `steve-iphone` is name of peer (choose yours), `10.0.0.2/32` peer's address and `wg0` is vpn interface to which it belongs.
+5. Check status: `wg`
 
-3. Bring vpn up: `wgctl up wg0`
-
-4. Check status: `wg`
-
-5. Get peer's configuration: `wgctl showpeer steve-iphone`. QR available only when you have installed `qrencode` tool.
+6. Get peer's configuration: `wgctl showpeer steve-iphone`. QR available only when you have installed `qrencode` tool.
 
 Stop vpn: `wgctl down wg0`
 
@@ -30,7 +38,7 @@ More options: `wgctl help`
 
 ### Make VPN permanent
 
-Good practice is to manage your network interfaces with `ifupdown` toolset, especially when you need bring them up once system is (re)started. To do this create file `/etc/network/interfaces.d/wireguard` with following content:
+For Debian based distros the most preferred way is to manage your network interfaces with `ifupdown` toolset. To make vpn interface up across reboots create file `/etc/network/interfaces.d/wireguard` with following content:
 
 ```
 auto wg0
@@ -39,9 +47,9 @@ iface wg0 inet manual
 	down wgctl down $IFACE
 ```
 
-**Note**: make sure that `/etc/network/interfaces` has `source-directory /etc/network/interfaces.d` or similar line otherwise `ifupdown` will not see your interface. Some distors and VPS providers are wiping this line by overwriting `interfaces` file with they own version.
+Make sure that `/etc/network/interfaces` has `source-directory /etc/network/interfaces.d` or similar line otherwise `ifupdown` will not see your interface. Some distors and virtual server providers are wiping this line in their `interfaces` files.
 
-**Important**: this is not suitable for busybox environments, for busybox use `/etc/network/interfaces` file to store vpn interface configuration.
+Busybox have its own implementation of `ifupdown` toolset, which have no support for `source-directory` option, so for such environments store your vpn interface configuration directly in `/etc/network/interfaces` file.
 
 ### Updating configs
 
@@ -67,6 +75,7 @@ Script holds all keys/configs in `/etc/wireguard/wgctl` folder:
 
 ### TODO
 
+ * Crossplatform support with wireguard-go
  * Updating peers with `wgctl updpeer` without restarting interfaces.
  * Deleting interfaces with `wgctl rmlink`.
 
